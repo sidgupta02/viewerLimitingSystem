@@ -1,9 +1,6 @@
 package com.example.viewerLimiterSystem.service;
 
-import com.example.viewerLimiterSystem.dto.LoginRequest;
-import com.example.viewerLimiterSystem.dto.LoginResponse;
-import com.example.viewerLimiterSystem.dto.LogoutRequest;
-import com.example.viewerLimiterSystem.dto.RegisterRequest;
+import com.example.viewerLimiterSystem.dto.*;
 import com.example.viewerLimiterSystem.entity.Session;
 import com.example.viewerLimiterSystem.entity.User;
 import com.example.viewerLimiterSystem.enums.SessionStatus;
@@ -14,6 +11,7 @@ import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -80,5 +78,24 @@ public class AuthService {
         sessionRepository.save(session);
 
         return new LoginResponse("Session logged out successfully", true, session.getSessionId());
+    }
+
+    public List<SessionResponse> getActiveSessions(String email){
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(()-> new RuntimeException("User not found"));
+
+        List<Session> sessions = sessionRepository.findByUserAndStatusAndExpiresAtAfter(
+                user,
+                SessionStatus.ACTIVE,
+                LocalDateTime.now()
+        );
+
+        return sessions.stream()
+                .map(s -> new SessionResponse(
+                        s.getSessionId(),
+                        s.getDeviceInfo(),
+                        s.getCreatedAt()
+                ))
+                .toList();
     }
 }

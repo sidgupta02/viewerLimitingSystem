@@ -1,12 +1,11 @@
 package com.example.viewerLimiterSystem.controller;
 
-import com.example.viewerLimiterSystem.dto.LoginRequest;
-import com.example.viewerLimiterSystem.dto.LoginResponse;
-import com.example.viewerLimiterSystem.dto.LogoutRequest;
-import com.example.viewerLimiterSystem.dto.RegisterRequest;
+import com.example.viewerLimiterSystem.dto.*;
 import com.example.viewerLimiterSystem.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -30,5 +29,10 @@ public class AuthController {
     @PostMapping("/logout")
     public LoginResponse logout(@RequestBody LogoutRequest request) {
         return authService.logout(request);
+    }
+
+    @GetMapping("/sessions")
+    public List<SessionResponse> getSessions(@RequestParam String email){
+        return authService.getActiveSessions(email);
     }
 }
