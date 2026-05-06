@@ -23,9 +23,4 @@ A backend system to restrict simultaneous device logins per user.
 - Sessions expire after fixed time
 - Logout marks session inactive
 
-## 🔮 Future Improvements
-- JWT Authentication
-- Redis for session storage
-- Distributed system support
-- Replace oldest session logic
-- Email verification
+
