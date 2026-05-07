@@ -8,8 +8,10 @@ import com.example.viewerLimiterSystem.repository.SessionRepository;
 import com.example.viewerLimiterSystem.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -21,6 +23,7 @@ public class AuthService {
     final private UserRepository userRepository;
     final private SessionRepository sessionRepository;
     final private ModelMapper modelMapper;
+    final private RedisTemplate<String, Object> redisTemplate;
 
     public LoginResponse login(LoginRequest loginRequest){
 
@@ -31,16 +34,24 @@ public class AuthService {
             return new LoginResponse("Invalid Password", false,null);
         }
 
-        long activeSession = sessionRepository
-                .countByUserAndStatusAndExpiresAtAfter(user, SessionStatus.ACTIVE, LocalDateTime.now());
+        String key = "user:" + user.getEmail() + ":sessions";
+        Long activeSession = redisTemplate.opsForSet().size(key);
+        //long activeSession = sessionRepository
+        //        .countByUserAndStatusAndExpiresAtAfter(user, SessionStatus.ACTIVE, LocalDateTime.now());
 
-        if(activeSession >= user.getMaxDevices()){
+        if(activeSession != null && activeSession >= user.getMaxDevices()){
             return new LoginResponse("Device Limit reached", false,null);
         }
 
         Session session = new Session();
+        String sessionId = UUID.randomUUID().toString();
+        //save session id in reddis
+        redisTemplate.opsForSet().add(key, sessionId);
+        // ttl for session keys
+        redisTemplate.expire(key, Duration.ofMinutes(30));
+
         session.setUser(user);
-        session.setSessionId(UUID.randomUUID().toString());
+        session.setSessionId(sessionId);
         session.setDeviceInfo(loginRequest.getDeviceInfo());
         session.setStatus(SessionStatus.ACTIVE);
         session.setCreatedAt(LocalDateTime.now());
@@ -73,6 +84,11 @@ public class AuthService {
         if(session.getStatus()==SessionStatus.INACTIVE){
             return new LoginResponse("Session already logged out", false,session.getSessionId());
         }
+
+        //redis remove
+        String key = "user:" + session.getUser().getEmail() + ":sessions";
+        redisTemplate.opsForSet().remove(key, request.getSessionId());
+
         session.setStatus(SessionStatus.INACTIVE);
         session.setLoggedOutAt(LocalDateTime.now());
         sessionRepository.save(session);
