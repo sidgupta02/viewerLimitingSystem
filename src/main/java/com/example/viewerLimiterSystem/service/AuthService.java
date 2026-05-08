@@ -24,6 +24,7 @@ public class AuthService {
     final private SessionRepository sessionRepository;
     final private ModelMapper modelMapper;
     final private RedisTemplate<String, Object> redisTemplate;
+    final private SessionAsyncService sessionAsyncService;
 
     public LoginResponse login(LoginRequest loginRequest){
 
@@ -57,7 +58,8 @@ public class AuthService {
         session.setCreatedAt(LocalDateTime.now());
         session.setExpiresAt(LocalDateTime.now().plusMinutes(30));
 
-        sessionRepository.save(session);
+        sessionAsyncService.saveSession(session);
+        //sessionRepository.save(session);
         return new LoginResponse("Login Successful", true,session.getSessionId());
     }
 
@@ -91,7 +93,8 @@ public class AuthService {
 
         session.setStatus(SessionStatus.INACTIVE);
         session.setLoggedOutAt(LocalDateTime.now());
-        sessionRepository.save(session);
+        sessionAsyncService.saveSession(session);
+        //sessionRepository.save(session);
 
         return new LoginResponse("Session logged out successfully", true, session.getSessionId());
     }
