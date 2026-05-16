@@ -4,6 +4,7 @@ import com.example.viewerLimiterSystem.dto.*;
 import com.example.viewerLimiterSystem.entity.Session;
 import com.example.viewerLimiterSystem.entity.User;
 import com.example.viewerLimiterSystem.enums.SessionStatus;
+import com.example.viewerLimiterSystem.kafka.KafkaProducerService;
 import com.example.viewerLimiterSystem.repository.SessionRepository;
 import com.example.viewerLimiterSystem.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class AuthService {
     final private ModelMapper modelMapper;
     final private RedisTemplate<String, Object> redisTemplate;
     final private SessionAsyncService sessionAsyncService;
+    private final KafkaProducerService kafkaProducerService;
 
     public LoginResponse login(LoginRequest loginRequest){
 
@@ -59,6 +61,14 @@ public class AuthService {
         session.setExpiresAt(LocalDateTime.now().plusMinutes(30));
 
         sessionAsyncService.saveSession(session);
+
+        KafkaSessionEvent event = new KafkaSessionEvent(
+                user.getEmail(),
+                session.getSessionId(),
+                "LOGIN",
+                session.getDeviceInfo()
+        );
+        kafkaProducerService.sendSessionEvent(event);
         //sessionRepository.save(session);
         return new LoginResponse("Login Successful", true,session.getSessionId());
     }
@@ -94,6 +104,14 @@ public class AuthService {
         session.setStatus(SessionStatus.INACTIVE);
         session.setLoggedOutAt(LocalDateTime.now());
         sessionAsyncService.saveSession(session);
+
+        KafkaSessionEvent event = new KafkaSessionEvent(
+                session.getUser().getEmail(),
+                session.getSessionId(),
+                "LOGOUT",
+                session.getDeviceInfo()
+        );
+        kafkaProducerService.sendSessionEvent(event);
         //sessionRepository.save(session);
 
         return new LoginResponse("Session logged out successfully", true, session.getSessionId());
